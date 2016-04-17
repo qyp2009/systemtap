@@ -1,0 +1,42 @@
+%{
+    #include <linux/in.h>
+    #include <linux/ip.h>
+	#include <linux/skbuff.h>
+%} /* <-- top level */
+
+function read_iphdr:long(skb:long) %{ /* pure */
+    struct iphdr *iph = ip_hdr((struct sk_buff *)STAP_ARG_skb);
+    STAP_RETVALUE = (long)iph;
+%} /* <-- function body */
+
+/* Determines whether an IP packet is TCP, based on the iphdr: */
+function is_tcp_packet:long(iphdr) {
+    protocol = @cast(iphdr, "iphdr")->protocol
+    return (protocol == %{ IPPROTO_TCP %}) /* <-- expression */
+}
+/*
+probe kernel.function("ip_local_deliver") {
+    iph = read_iphdr(pointer_arg(1));
+    printf("tcp packet ? %s\n", is_tcp_packet(iph) ? "yes" : "no");
+}
+*/
+
+probe begin {
+    printf("SystemTap start!\n");
+}
+
+function read_sk_buff:long(skb:long) %{ /* pure */
+    struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;
+    STAP_RETVALUE = (long)skb;
+%} /* <-- function body */
+
+probe kernel.function("netif_receive_skb") {
+    skb = read_sk_buff(pointer_arg(1));
+//    printf("packet data:\n%s\n", @cast(skb,"sk_buff")$$);
+}
+
+probe kernel.function("tcp_recvmsg").return {
+//    skb = read_sk_buff(pointer_arg(1));
+//    printf("packet data:\n%s\n", @cast(skb,"sk_buff")$$);
+	printf("tcp_recvmsg.return :%d\n",returnval());
+}

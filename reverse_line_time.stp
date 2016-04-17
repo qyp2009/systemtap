@@ -1,0 +1,14 @@
+global t, call_time
+
+probe process("./tac").function("reverse_line"){
+ t = gettimeofday_ns()
+}
+
+probe process("./tac").function("reverse_line").return{
+ call_time <<< (gettimeofday_ns() - t)
+}
+
+probe end{
+ if(@count(call_time) > 0) 
+	printf("avg reverse_line execute time: %d ns\n", @avg(call_time))
+}

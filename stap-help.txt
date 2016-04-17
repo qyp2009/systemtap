@@ -1,0 +1,99 @@
+[quyupeng@hw204 ~]$ stap --help
+Systemtap translator/driver (version 2.6/0.160, rpm 2.6-10.el7_1)
+Copyright (C) 2005-2014 Red Hat, Inc. and others
+This is free software; see the source for copying conditions.
+enabled features: AVAHI LIBRPM LIBSQLITE3 NSS BOOST_SHARED_PTR TR1_UNORDERED_MAP NLS DYNINST JAVA LIBVIRT LIBXML2
+
+Usage: stap [options] FILE                    Run script in file.
+   or: stap [options] -                       Run script on stdin.
+   or: stap [options] -e SCRIPT               Run given script.
+   or: stap [options] -l PROBE                List matching probes.
+   or: stap [options] -L PROBE                List matching probes and local variables.
+   or: stap [options] --dump-probe-types      List available probe types.
+   or: stap [options] --dump-probe-aliases    List available probe aliases.
+   or: stap [options] --dump-functions        List available functions.
+
+Options (in /home/quyupeng/.systemtap/rc and on command line):
+   --         end of translator options, script options follow
+   -h --help  show help
+   -V --version  show version
+   -p NUM     stop after pass NUM 1-5, instead of 5
+              (parse, elaborate, translate, compile, run)
+   -v         add verbosity to all passes
+   --vp {N}+  add per-pass verbosity [00000]
+   -k         keep temporary directory
+   -u         unoptimized translation 
+   -w         suppress warnings 
+   -W         turn warnings into errors 
+   -g         guru mode 
+   -P         prologue-searching for function probes 
+   -b         bulk (percpu file) mode 
+   -s NUM     buffer size in megabytes, instead of 0
+   -I DIR     look in DIR for additional .stp script files, in addition to
+              /usr/share/systemtap/tapset
+   -D NM=VAL  emit macro definition into generated C code
+   -B NM=VAL  pass option to kbuild make
+   --modinfo NM=VAL
+              include a MODULE_INFO(NM,VAL) in the generated C code
+   -G VAR=VAL set global variable to value
+   -R DIR     look in DIR for runtime, instead of
+              /usr/share/systemtap/runtime
+   -r DIR     cross-compile to kernel with given build tree; or else
+   -r RELEASE cross-compile to kernel /lib/modules/RELEASE/build, instead of
+              /lib/modules/3.10.0-229.11.1.el7.x86_64/build
+   -a ARCH    cross-compile to given architecture, instead of x86_64
+   -m MODULE  set probe module name, instead of 
+              stap_7024
+   -o FILE    send script output to file, instead of stdout. This supports
+              strftime(3) formats for FILE
+   -E SCRIPT  run the SCRIPT in addition to the main script specified
+              through -e or a script file
+   -c CMD     start the probes, run CMD, and exit when it finishes
+   -x PID     sets target() to PID
+   -F         run as on-file flight recorder with -o.
+              run as on-memory flight recorder without -o.
+   -S size[,n] set maximum of the size and the number of files.
+   -d OBJECT  add unwind/symbol data for OBJECT file
+   --ldd      add unwind/symbol data for all referenced object files.
+   --all-modules
+              add unwind/symbol data for all loaded kernel objects.
+   -t         collect probe timing information
+   -q         generate information on tapset coverage
+   --runtime=MODE
+              set the pass-5 runtime mode, instead of kernel
+   --dyninst
+              shorthand for --runtime=dyninst
+   --privilege=PRIVILEGE_LEVEL
+              check the script for constructs not allowed at the given privilege level
+   --unprivileged
+              equivalent to --privilege=stapusr
+   --compatible=VERSION
+              suppress incompatible language/tapset changes beyond VERSION,
+              instead of 2.6
+              ssl,signer,all-users,revoke,no-prompt                                                           [0/1984]
+   --use-server-on-error[=yes/no]
+              retry compilation using a compile server upon compilation error
+   --remote=HOSTNAME
+              run pass 5 on the specified ssh host.
+              may be repeated for targeting multiple hosts.
+   --remote-prefix
+              prefix each line of remote output with a host index.
+   --tmpdir=NAME
+              specify name of temporary directory to be used.
+   --download-debuginfo[=OPTION]
+              automatically download debuginfo using ABRT.
+              yes,no,ask,<timeout value>
+   --dump-probe-types
+              show a list of available probe types.
+   --sysroot=DIR
+              specify sysroot directory where target files (executables,
+              libraries, etc.) are located.
+   --sysenv=VAR=VALUE
+              provide an alternate value for an environment variable
+              where the value on a remote system differs.  Path
+              variables (e.g. PATH, LD_LIBRARY_PATH) are assumed to be
+              relative to the sysroot.
+   --suppress-time-limits
+              disable -DSTP_OVERLOAD, -DMAXACTION, and -DMAXTRYACTION limits
+   --save-uprobes
+              save uprobes.ko to current directory if it is built from source

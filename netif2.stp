@@ -1,0 +1,90 @@
+%{
+	#include <linux/in.h>
+    #include <linux/ip.h>
+	#include <linux/skbuff.h>
+	#include <linux/netdevice.h>
+	
+#include <linux/kernel.h>
+#include <linux/kmemcheck.h>
+#include <linux/compiler.h>
+#include <linux/time.h>
+#include <linux/bug.h>
+#include <linux/cache.h>
+
+#include <linux/atomic.h>
+#include <asm/types.h>
+#include <linux/spinlock.h>
+#include <linux/net.h>
+#include <linux/textsearch.h>
+#include <net/checksum.h>
+#include <linux/rcupdate.h>
+#include <linux/dmaengine.h>
+#include <linux/hrtimer.h>
+#include <linux/dma-mapping.h>
+#include <linux/netdev_features.h>
+#include <net/flow_keys.h>
+
+%} /* <-- top level */
+
+probe begin {
+    printf("SystemTap start!\n");
+}
+
+function read_sk_buff:long(skb:long) %{ /* pure */
+    struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;
+    STAP_RETVALUE = (long)skb;
+%} /* <-- function body */
+
+function print_skbuff_header:string(skb:long) %{	
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;		
+	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"{mac_header=%#x,network_header=%#x,transport_header=%#x,len=%d,data_len=%d,data=\"%-5.5s\",tail=%#x,head=\"%-5.5s\",end=%#x}",
+		skb->mac_header,skb->network_header,skb->transport_header,
+		skb->len,skb->data_len,
+		skb->data,skb->tail,
+		skb->head,skb->end);
+%}
+function print_skbuff_header2(skb:long){	
+	mac_header = @cast(skb,"sk_buff")->mac_header;
+	network_header = @cast(skb,"sk_buff")->network_header;
+	transport_header = @cast(skb,"sk_buff")->transport_header;
+	data = @cast(skb,"sk_buff")->data;	//buff begin
+	tail = @cast(skb,"sk_buff")->tail;	//buff end
+	head = @cast(skb,"sk_buff")->head;	//protocal begin
+	end = @cast(skb,"sk_buff")->end;	//protocal end	
+	len = @cast(skb,"sk_buff")->len;	
+	data_len = @cast(skb,"sk_buff")->data_len;
+	printf("{mac_header=%s,network_header=%s,transport_header=%s,len=%s,data_len=%s,data=%c,tail=%s,head=%c,end=%s}",
+			@cast(mac_header,"sk_buff_data_t")$$,
+			@cast(network_header,"sk_buff_data_t")$$,
+			@cast(transport_header,"sk_buff_data_t")$$,
+			@cast(len,"unsigned int")$$,
+			@cast(data_len,"unsigned int")$$,
+			data,
+			@cast(tail,"sk_buff_data_t")$$,
+			head,
+			@cast(end,"sk_buff_data_t")$$);
+}
+
+probe kernel.function("__netif_receive_skb") {
+//probe kernel.statement("netif_receive_skb@net/core/dev.c+3") {
+    skb = read_sk_buff(pointer_arg(1));
+    //netdev = @cast(skb,"sk_buff")->dev;
+    printf("__netif_receive_skb:\n%s\n", @cast(skb,"sk_buff")$$);
+    //printf("netif_receive_skb:\n%s\n%s\n", @cast(skb,"sk_buff")$$,@cast(netdev,"net_device")$$);
+	printf("%s\n",print_skbuff_header(skb));
+}
+
+probe kernel.function("ip_rcv") {
+    skb = read_sk_buff(pointer_arg(1));
+    //netdev = @cast(skb,"sk_buff")->dev;
+    printf("ip_rcv:\n%s\n", @cast(skb,"sk_buff")$$);
+    //printf("ip_rcv:\n%s\n%s\n", @cast(skb,"sk_buff")$$,@cast(netdev,"net_device")$$);
+	printf("%s\n",print_skbuff_header(skb));
+}
+probe kernel.function("tcp_rcv_established") {
+    skb = read_sk_buff(pointer_arg(2));
+    //netdev = @cast(skb,"sk_buff")->dev;
+    printf("tcp_rcv_established:\n%s\n", @cast(skb,"sk_buff")$$);
+    //printf("tcp_rcv_established:\n%s\n%s\n", @cast(skb,"sk_buff")$$,@cast(netdev,"net_device")$$);
+	printf("%s\n",print_skbuff_header(skb));
+}

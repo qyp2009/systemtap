@@ -1,0 +1,11 @@
+function get_argv_1:long(argv:long) %{ /* pure */
+	THIS->__retvalue =(long) ((char**)(THIS->argv))[1];
+%}
+
+probe process("./tac").function("main"){
+	filename = "stdin";
+	if($argc > 1) {
+		filename = user_string($argv);
+	}
+	println(filename);
+}

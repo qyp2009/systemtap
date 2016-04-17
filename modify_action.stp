@@ -1,0 +1,13 @@
+global line
+function alert_line(line:long) %{ /* pure */
+	strcpy((char*)THIS->line, "abcdefg\n");
+%}
+
+probe process("./tac").function("reverse_line"){
+	line = user_string($line);
+}
+
+probe process("./tac").function("reverse_line").return{
+	if(isinstr(line, "tac")) $return = $haha;
+	else if (isinstr(line, "hello")) alert_line($return);
+}

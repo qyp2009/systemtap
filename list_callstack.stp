@@ -1,0 +1,4 @@
+probe process(@1).function(@2){
+	print_ubacktrace();
+	exit();
+}

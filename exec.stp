@@ -1,0 +1,4 @@
+probe syscall.exec*{
+	printf("exec %s %s\n", execname(), argstr)
+}
+

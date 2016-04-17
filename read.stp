@@ -1,0 +1,8 @@
+global avg(reads);
+probe kernel.syscall("read") {
+	reads[$pname] <<< byte_count; 
+}
+
+probe end {
+	print(reads,"reads by process \"%1s\": %C.  Total bytes=%S.  Average: %A"));
+}

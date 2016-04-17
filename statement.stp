@@ -1,0 +1,15 @@
+probe begin {
+	printf("SystemTap start!\n");
+}
+
+probe process("statement").statement("main@statement.c+3") {
+	$a=$a+3;
+	printf("a=%d\n",$a);
+}
+
+probe process("statement").statement("sub@statement.c+2") {
+	$c=$c-6;
+	printf("c=%d\n",$c);
+}
+
+

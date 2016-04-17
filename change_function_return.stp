@@ -1,0 +1,12 @@
+probe begin {
+	printf("SystemTap start!\n");
+}
+
+probe process("change_function_return").function("add").return {
+	//returnval() = returnval() + 3;
+	$return=$return+5;
+	printf("add=%d\n",returnval());
+}
+
+
+

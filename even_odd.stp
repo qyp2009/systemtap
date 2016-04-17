@@ -1,0 +1,25 @@
+global evens,odds
+
+probe begin {
+	for(i=0;i<10;i++){
+		if(i%2)
+			odds[no++]=i
+		else
+			evens[ne++]=i
+	}
+	delete odds[2]
+	delete evens[3]
+#exit()
+}
+
+probe syscall.write {
+
+}
+
+probe end {
+	foreach (x in odds-)
+		printf("odds[%d] = %d\n",x,odds[x])
+	
+	foreach (x in evens+)
+		printf("evens[%d] = %d\n",x,evens[x])
+}

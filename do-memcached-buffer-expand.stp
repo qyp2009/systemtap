@@ -1,0 +1,57 @@
+%{
+#include <linux/in.h>
+#include <linux/ip.h>
+#include <linux/skbuff.h>
+
+%}
+
+probe begin {
+	printf("SystemTap start\n");
+}
+function get_str:string (s:long,len:long) %{
+	char *str = (char *)STAP_ARG_s;
+	int len = STAP_ARG_len;
+	strcpy(STAP_RETVALUE,str);
+%}
+
+function delete_skb_id:string (s:long,len:long) %{
+	char *str = (char *)STAP_ARG_s;
+	int len = STAP_ARG_len;
+
+	
+	strcpy(STAP_RETVALUE,str);	
+%}
+
+
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17/memcached").statement("try_read_network@/home/quyupeng/benchmark/memcached/memcached-1.4.17/memcached.c+37")
+{
+	rcount = $res;
+	count = $c->rbytes+rcount;
+	printf("alloc-size:%d,recv-size:%d,cur read size:%d\n",$c->rsize,count,rcount);
+	printf("%*.*s",count,count,get_str($c->rbuf,count));
+}
+
+//try_net_work calloc
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17/memcached").statement("try_read_network@/home/quyupeng/benchmark/memcached/memcached-1.4.17/memcached.c+18")
+{
+	$c->rsize = $c->rsize * 30;
+	printf("rsize alloc*2 *30:%d\n",$c->rsize * 2);
+}
+
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17/memcached").statement("try_read_network@/home/quyupeng/benchmark/memcached/memcached-1.4.17/memcached.c+19")
+{
+	$c->rsize = $c->rsize / 30;
+	printf("rsize alloc*2    :%d\n",$c->rsize * 2);
+}
+//conn_new malloc
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17/memcached").statement("conn_new@/home/quyupeng/benchmark/memcached/memcached-1.4.17/memcached.c+31")
+{
+	$c->rsize = $c->rsize * 30;
+	printf("rsize alloc *30:%d\n",$c->rsize);
+}
+
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17/memcached").statement("conn_new@/home/quyupeng/benchmark/memcached/memcached-1.4.17/memcached.c+32")
+{
+	$c->rsize = $c->rsize / 30;
+	printf("rsize alloc    :%d\n",$c->rsize);
+}

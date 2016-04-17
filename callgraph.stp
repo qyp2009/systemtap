@@ -1,0 +1,10 @@
+function trace(entry_p, extra) {
+  %( $# > 1 %? if (tid() in trace) %)
+  printf("%s%s%s %s\n",
+      thread_indent (entry_p),
+      (entry_p>0?"->":"<-"),
+      probefunc (),
+      extra)
+}
+probe $1.call { trace(1, $$parms) }
+probe $1.return { trace(-1, $$return) }

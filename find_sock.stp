@@ -1,0 +1,108 @@
+%{
+#include <linux/fdtable.h>
+#include <linux/file.h>
+#include <net/inet_connection_sock.h>
+%}
+
+%{
+int err = 0, fput_needed = 0;
+%}
+
+function stap_fget_light(fd_param:long, pid_param:long)%{
+    int fd = STAP_ARG_fd_param;
+    struct file *file;
+    struct files_struct *files;
+    struct task_struct *p;
+
+    p = pid_task(find_pid_ns(STAP_ARG_pid_param, 
+                current->nsproxy->pid_ns), PIDTYPE_PID);
+    if (!p) {
+        _stp_printf("Find task %d failed\n", STAP_ARG_pid_param);
+        STAP_RETVALUE = (long)NULL;
+        return;
+    }
+
+    files = p->files;
+    fput_needed = 0;
+
+    if (likely((atomic_read(&files->count)== 1))) {
+        file = fcheck_files(files, fd);
+    } else {
+        rcu_read_lock();
+        file = fcheck_files(files, fd);
+        if (file) {
+            if (atomic_long_inc_not_zero(&file->f_count))
+                fput_needed = 1;
+            else
+                /* Didn't get the reference, someone's freed */
+                file = NULL;
+        }
+        rcu_read_unlock();
+    }
+
+    if (!file) {
+        _stp_printf("Task %d did not have fd %d\n" ,STAP_ARG_pid_param, STAP_ARG_fd_param);
+    }
+
+    STAP_RETVALUE = (long)file;
+    return;
+
+%}
+
+function stap_sockfd_lookup_light(file_param:long)%{
+    struct file *file = (typeof(file))STAP_ARG_file_param;
+
+    STAP_RETVALUE = (long)file->private_data;
+    return;
+%}
+
+global file_ptr
+
+function get_socket_by_pid_and_fd()
+{
+    sock_ptr = 0;
+
+    file_ptr = stap_fget_light($1, $2);
+    if (file_ptr) {
+        sock_ptr = stap_sockfd_lookup_light(file_ptr);
+    }
+
+    return sock_ptr;
+}
+
+function stap_fput_light(file_param:long)%{
+    struct file *file = (typeof(file))STAP_ARG_file_param;
+
+    if (file) {
+        fput_light(file, fput_needed);
+    }
+%}
+
+function verify_socket(socket_param:long)%{
+    struct socket *sock = (typeof(sock))STAP_ARG_socket_param;
+    struct sock *sk = sock->sk;
+    struct inet_sock *isk = inet_sk(sk);
+
+    _stp_printf("\n\nverify_socket: local IP: " NIPQUAD_FMT", port: %u\n", NIPQUAD(isk->saddr), isk->num);
+
+%}
+
+probe begin
+{
+    printf("Start to get socket. fd: %d, process: %d\n", $1, $2);
+
+    sock_address = get_socket_by_pid_and_fd();
+    if (sock_address) {
+
+        /* You can remove printf and verify_socket, just for test */
+        printf("sock_address = %p\n", sock_address);
+        verify_socket(sock_address);
+        
+
+        /* ******** Insert your code or function here ******** */
+
+        stap_fput_light(file_ptr);
+    }
+
+    exit();
+}

@@ -1,0 +1,19 @@
+#!/usr/bin/stap -g
+
+%{
+	#include <linux/ktime.h>
+	#include <linux/hrtimer.h>
+%}
+
+function get_tstamp:string() %{
+	ktime_t tstamp;
+	tstamp = ktime_get_real();
+	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%lld",tstamp.tv64);
+%}
+
+probe begin {
+	printf("SystemTap Start\n");
+	printf("%s\n",get_tstamp());
+	exit();
+}
+
