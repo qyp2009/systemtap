@@ -5,6 +5,13 @@
 	#include <linux/hrtimer.h>
 %}
 
+function get_tstamp_timespec:string() %{
+	struct timespec ts;
+	ktime_t kt;
+	getnstimeofday(&ts);
+	kt.tv64 = (s64)ts.tv_sec * NSEC_PER_SEC + (s64)ts.tv_nsec ;
+	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"s:%d,ns:%d,ktime:%lld",(s32)ts.tv_sec,(s32)ts.tv_nsec,kt.tv64);
+%}
 function get_tstamp:string() %{
 	ktime_t tstamp;
 	tstamp = ktime_get_real();
@@ -13,7 +20,8 @@ function get_tstamp:string() %{
 
 probe begin {
 	printf("SystemTap Start\n");
-	printf("%s\n",get_tstamp());
+	printf("timespec:%s\n",get_tstamp_timespec());
+	printf("ktime:%s\n",get_tstamp());
 	exit();
 }
 

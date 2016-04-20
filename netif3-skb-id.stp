@@ -107,15 +107,16 @@ function print_skbuff_tstamp:string(skb:long,func_name:string) %{
 	ktime_t tstamp = ktime_get_real();
 
 	if(th->dest == 52011 && th->syn!=1 && th->fin!=1){
-		snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%s,skb->tstamp:%lld,    %lld\n",func_name,skb->tstamp.tv64,tstamp.tv64);	
+		snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%s    %lld    %lld\n",func_name,skb->tstamp.tv64,tstamp.tv64);	
 	}
 %}
-
+/*
 function get_tstamp:string() %{
 	ktime_t tstamp;
 	tstamp = ktime_get_real();
 	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%lld",tstamp.tv64);
 %}
+*/
 
 probe kernel.function("__netif_receive_skb") {
 	printf("%s",print_skbuff_tstamp(pointer_arg(1),"netif_receive_skb"));
