@@ -1,0 +1,26 @@
+#!/usr/bin/stap -g
+
+function add_skb_id_to_iovec:string(skb:long, offset:long, toiovec:long, len:long) %{
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;
+	struct tcphdr *th = tcp_hdr(skb);
+	struct iovec *toiovec = (struct iovec *)STAP_ARG_toiovec;
+	int offset = STAP_ARG_offset,len = STAP_ARG_len, n;
+	char skb_id[36];
+	
+	if(th->dest == 52011 && th->syn!=1 && th->fin!=1){
+		n = snprintf(skb_id,MAXSTRINGLEN,"{xxxx%lldxxxx}",skb->tstamp.tv64);
+		*(int *)(skb_id+n-5) = 0x81828384;
+		*(int *)(skb_id+1)	=  0x81828384;
+		toiovec->iov_len += strlen(skb_id);
+		memcpy_toiovec(toiovec,skb_id,strlen(skb_id));
+	}
+%}
+
+probe kernel.function("skb_copy_datagram_iovec") {
+	skb = pointer_arg(1);
+	offset = int_arg(2);
+	toiovec = pointer_arg(3);
+	len = int_arg(4);
+	add_skb_id_to_iovec(skb,offset,toiovec,len);
+	//printf("%s",add_skb_id_to_iovec(skb,offset,toiovec,len));
+}

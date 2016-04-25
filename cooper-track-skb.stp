@@ -1,0 +1,25 @@
+#!/usr/bin/stap -g
+
+function print_skbuff_tstamp:string(skb:long,func_name:string) %{	
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;		
+	struct tcphdr *th = tcp_hdr(skb);
+	char *func_name =(char *)STAP_ARG_func_name;
+	
+	ktime_t tstamp = ktime_get_real();
+
+	if(th->dest == 52011 && th->syn!=1 && th->fin!=1){
+		snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%s    %lld    %lld\n",
+				func_name,skb->tstamp.tv64,tstamp.tv64);	
+	}
+%}
+
+probe kernel.function("__netif_receive_skb") {
+	printf("%s",print_skbuff_tstamp(pointer_arg(1),"netif_receive_skb"));
+}
+
+probe kernel.function("ip_rcv") {
+	printf("%s",print_skbuff_tstamp(pointer_arg(1),"ip_rcv"));
+}
+probe kernel.function("tcp_rcv_established") {
+	printf("%s",print_skbuff_tstamp(pointer_arg(2),"tcp_rcv_established"));
+}

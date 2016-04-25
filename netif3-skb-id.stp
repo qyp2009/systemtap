@@ -91,13 +91,20 @@ probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcac
 }
 */
 
-
+/*
 probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached").function("conn_new@/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached.c").return
 {
 	$return->skb_id_flag=1;
 }
+*/
 
-
+/*
+function get_tstamp:string() %{
+	ktime_t tstamp;
+	tstamp = ktime_get_real();
+	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%lld",tstamp.tv64);
+%}
+*/
 
 function print_skbuff_tstamp:string(skb:long,func_name:string) %{	
 	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;		
@@ -110,13 +117,6 @@ function print_skbuff_tstamp:string(skb:long,func_name:string) %{
 		snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%s    %lld    %lld\n",func_name,skb->tstamp.tv64,tstamp.tv64);	
 	}
 %}
-/*
-function get_tstamp:string() %{
-	ktime_t tstamp;
-	tstamp = ktime_get_real();
-	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%lld",tstamp.tv64);
-%}
-*/
 
 probe kernel.function("__netif_receive_skb") {
 	printf("%s",print_skbuff_tstamp(pointer_arg(1),"netif_receive_skb"));

@@ -12,16 +12,33 @@ function get_tstamp_timespec:string() %{
 	kt.tv64 = (s64)ts.tv_sec * NSEC_PER_SEC + (s64)ts.tv_nsec ;
 	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"s:%d,ns:%d,ktime:%lld",(s32)ts.tv_sec,(s32)ts.tv_nsec,kt.tv64);
 %}
+
 function get_tstamp:string() %{
 	ktime_t tstamp;
 	tstamp = ktime_get_real();
 	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%lld",tstamp.tv64);
 %}
 
+function get_tstamp2:long() %{
+	ktime_t tstamp;
+	tstamp = ktime_get_real();
+	STAP_RETVALUE = (tstamp.tv64);	
+%}
+
 probe begin {
 	printf("SystemTap Start\n");
 	printf("timespec:%s\n",get_tstamp_timespec());
 	printf("ktime:%s\n",get_tstamp());
+	printf("ktime2:%ld\n",get_tstamp2());
+	
+	begin_ts = get_tstamp2();
+	for(i=0;i<1000;i++){
+		end_ts = get_tstamp2();
+	}
+	end_ts = get_tstamp2();	
+	printf("\ntimestamp begin: %ld ns\nafter 1000 times get_timestamp ......\ntimestamp   end: %ld ns\n",begin_ts,end_ts);
+	printf("average offload: %ld/%d = %ld ns\n", end_ts-begin_ts,1000,(end_ts-begin_ts)/1000);
+
 	exit();
 }
 

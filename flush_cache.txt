@@ -1,0 +1,23 @@
+//gcc flush.c -o flush -std=c99 //don't use -Ox optimization
+//perf stat -e LLC-load-misses,LLC-loads,LLC-store-misses,LLC-stores,LLC-prefetch-misses,LLC-prefetches ./flush
+//taskset -c 11 perf stat -e cycles,instructions,cache-references,cache-misses ./flush 
+//perf stat -e cycles,instructions,cache-references,cache-misses ./flush
+
+#include<stdio.h>
+#include<stdlib.h>
+
+int main()
+{
+	long long int size = (long long int)1024 * 1024 * 1024 * 6;
+	char *pointer = (char*)malloc(size);
+	long long int ii = 0;
+	while(1)
+	{
+		for(long long int i = 1 ; ; i = i * 16807 % 2147483647)
+		{
+			pointer[i]=0;
+		}
+		//printf("iteration %d\n",ii++);
+	}
+	return 0;
+}
