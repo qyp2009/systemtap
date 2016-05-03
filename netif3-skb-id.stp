@@ -57,15 +57,6 @@ function add_skb_id_to_iovec:string(skb:long, offset:long, toiovec:long, len:lon
 		n = snprintf(skb_id,MAXSTRINGLEN,"{xxxx%lldxxxx}",skb->tstamp.tv64);
 		*(int *)(skb_id+n-5) = 0x81828384;
 		*(int *)(skb_id+1)	=  0x81828384;
-		/*skb_id[1]=(char)0x84;
-		skb_id[2]=(char)0x83;
-		skb_id[3]=(char)0x82;
-		skb_id[4]=(char)0x81;
-		skb_id[n-5]=(char)0x84;
-		skb_id[n-4]=(char)0x83;
-		skb_id[n-2]=(char)0x82;
-		skb_id[n-1]=(char)0x81;*/
-		//memmove(STAP_RETVALUE,skb_id,strlen(skb_id));
 		toiovec->iov_len += strlen(skb_id);
 		memcpy_toiovec(toiovec,skb_id,strlen(skb_id));
 	}

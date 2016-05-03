@@ -1,0 +1,223 @@
+%{
+	#include <linux/in.h>
+    #include <linux/ip.h>
+	#include <linux/skbuff.h>
+	#include <linux/netdevice.h>
+	#include <linux/tcp.h>
+	#include <net/ip.h>
+	
+#include <linux/kernel.h>
+#include <linux/kmemcheck.h>
+#include <linux/compiler.h>
+#include <linux/time.h>
+#include <linux/bug.h>
+#include <linux/cache.h>
+
+#include <linux/atomic.h>
+#include <asm/types.h>
+#include <linux/spinlock.h>
+#include <linux/net.h>
+#include <linux/textsearch.h>
+#include <net/checksum.h>
+#include <linux/rcupdate.h>
+#include <linux/dmaengine.h>
+#include <linux/hrtimer.h>
+#include <linux/dma-mapping.h>
+#include <linux/netdev_features.h>
+#include <net/flow_keys.h>
+
+%} /* <-- top level */
+
+probe begin {
+    printf("SystemTap start!\n");
+}
+
+function read_sk_buff:long(skb:long) %{ /* pure */
+    struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;
+    STAP_RETVALUE = (long)skb;
+%} /* <-- function body */
+
+function print_skbuff_merge:string(head:long,skb:long,caller:string) %{	
+	char *caller = (char *)STAP_ARG_caller;
+	struct sk_buff **head = (struct sk_buff **)STAP_ARG_head,*lp1;		
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;		
+	struct tcphdr *th = tcp_hdr(skb);
+	
+	if(th->dest==2586 && th->syn!=1 && th->fin!=1){
+		if(head!=NULL && *head!=NULL){
+			//lp1 = NAPI_GRO_CB(*head)->last;
+			lp1 = *head;
+			snprintf(STAP_RETVALUE,MAXSTRINGLEN,"{%s,last_skb->timestamp:%lld,lskb->len:%d,skb->timestamp:%lld,skb->len:%d}\n",
+				caller,lp1->tstamp.tv64,lp1->len,skb->tstamp.tv64,skb->len);
+		}else{
+			snprintf(STAP_RETVALUE,MAXSTRINGLEN,"{%s,skb->timestamp:%lld,skb->len:%d}\n",
+				caller,skb->tstamp.tv64,skb->len);	
+		}
+	}else{
+		//snprintf(STAP_RETVALUE,MAXSTRINGLEN,"{port:%d}\n",th->dest);
+	}
+%}
+
+function print_skbuff_header:string(skb:long,caller:string) %{	
+	char *caller = (char *)STAP_ARG_caller;
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;		
+	struct tcphdr *th = tcp_hdr(skb);
+	int ip_frag = ip_is_fragment(ip_hdr(skb));
+	
+	if(th->dest==2586 && th->syn!=1 && th->fin!=1){
+	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"{%s,mac_header=%#x,network_header=%#x,transport_header=%#x,len=%d,data_len=%d,skb_headlen:%d,skb_pagelen:%d,ip_frag:%d,skb->timestamp:%lld}\n",
+		caller,skb->mac_header,skb->network_header,skb->transport_header,
+		skb->len,skb->data_len,skb_headlen(skb),skb_pagelen(skb),ip_frag,skb->tstamp.tv64);
+	}else{
+	//snprintf(STAP_RETVALUE,MAXSTRINGLEN,"{port:%d}\n",th->dest);
+	}
+%}
+
+function print_copyto_iovec:string(skb:long, offset:long, toiovec:long, len:long) %{
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;
+	struct tcphdr *th = tcp_hdr(skb);
+	struct iovec *toiovec = (struct iovec *)STAP_ARG_toiovec;
+	int offset = STAP_ARG_offset,len = STAP_ARG_len;
+	static char skb_id[188];
+	int start1 = skb_headlen(skb);//skb->len - skb->data_len
+	int copy1 = start1 - offset,copy11;
+	int copy2 = skb_pagelen(skb) - offset,copy22;
+
+	int ip_frag = ip_is_fragment(ip_hdr(skb));
+	
+	if(copy1 > len) copy11=len; else copy11=copy1;
+	if(copy2 > len) copy22=len; else copy22=copy2;
+
+	
+	if(th->dest == 2586 && th->syn!=1 && th->fin!=1){
+		snprintf(skb_id,MAXSTRINGLEN,
+				"{copyto_offset:%d,copyto_len:%d,len_linear:%d:%d,len_page:%d:%d,len:%d,data_len:%d,ip_frag:%d,skb->timestap:%lld}\n",
+				offset, len, copy1, copy11, copy2, copy22, skb->len,skb->data_len,ip_frag, skb->tstamp.tv64);
+		strlcpy(STAP_RETVALUE,skb_id,188);
+		//toiovec->iov_len += strlen(skb_id);
+		//memcpy_toiovec(toiovec,skb_id,strlen(skb_id));
+	}
+%}
+function add_skb_id_to_iovec:string(skb:long, offset:long, toiovec:long, len:long) %{
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;
+	struct tcphdr *th = tcp_hdr(skb);
+	struct iovec *toiovec = (struct iovec *)STAP_ARG_toiovec;
+	int offset = STAP_ARG_offset,len = STAP_ARG_len;
+	static char skb_id[100];
+	int start1 = skb_headlen(skb);//skb->len - skb->data_len
+	int copy1 = start1 - offset;
+
+	if(copy1 > len) copy1=len;
+	//snprintf(skb_id,MAXSTRINGLEN,"{sport:%d,dport:%d,cooper,%lld",th->source,th->dest,skb->tstamp.tv64);
+	//strlcpy(STAP_RETVALUE,skb_id,99);
+	//strncat(skb_id,skb->data+offset,copy1);
+	//if(copy_to_user(skb_id,skb->data+offset,copy1)){
+		
+	//}
+	if(th->dest == 2586 && th->syn!=1 && th->fin!=1){
+		snprintf(skb_id,MAXSTRINGLEN,"{size:%d,len:%d,data_len:%d,offset:%d,skb->timestap:%lld}",copy1,skb->len,skb->data_len,offset,skb->tstamp.tv64);
+		strlcpy(STAP_RETVALUE,skb_id,99);
+		toiovec->iov_len += strlen(skb_id);
+		memcpy_toiovec(toiovec,skb_id,strlen(skb_id));
+	}
+%}
+
+function print_skb_port:string(skb:long) %{
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;
+	struct tcphdr *th = (struct tcphdr *)(skb->data);
+	char skb_id[100];
+	
+	snprintf(skb_id,MAXSTRINGLEN,"{sport:%d,dport:%d,syn:%d,fin:%d,tv64:%lld,data:%c}",
+			th->source,th->dest,th->syn,th->fin,skb->tstamp.tv64,*(skb->data+sizeof(struct tcphdr)));
+	//strlcpy(STAP_RETVALUE,skb_id,99);
+%}
+
+probe kernel.function("skb_copy_datagram_iovec") {
+	skb = pointer_arg(1);
+	offset = int_arg(2);
+	toiovec = pointer_arg(3);
+	len = int_arg(4);
+	//printf("hello:%d,%d,%s\n",offset,len,add_skb_id_to_iovec(skb,offset,toiovec,len));
+	printf("%s",print_copyto_iovec(skb,offset,toiovec,len));
+}
+probe kernel.function("skb_copy_datagram_iovec").return {
+//    skb = read_sk_buff(pointer_arg(1));
+//    printf("packet data:\n%s\n", @cast(skb,"sk_buff")$$);
+    //printf("skb_copy_datagram_iovec.return :%d\n",returnval());
+}
+
+probe kernel.function("tcp_recvmsg").return {
+//    skb = read_sk_buff(pointer_arg(1));
+//    printf("packet data:\n%s\n", @cast(skb,"sk_buff")$$);
+    //printf("tcp_recvmsg.return :%d\n",returnval());
+}
+
+probe kernel.function("netif_receive_skb") {
+//probe kernel.statement("netif_receive_skb@net/core/dev.c+3") {
+    skb = read_sk_buff(pointer_arg(1));
+    //netdev = @cast(skb,"sk_buff")->dev;
+    //printf("__netif_receive_skb:\n%s\n", @cast(skb,"sk_buff")$$);
+    //printf("netif_receive_skb:\n%s\n%s\n", @cast(skb,"sk_buff")$$,@cast(netdev,"net_device")$$);
+	printf("%s",print_skbuff_header(skb,"mac0"));
+}
+probe kernel.function("__netif_receive_skb") {
+//probe kernel.statement("netif_receive_skb@net/core/dev.c+3") {
+    skb = read_sk_buff(pointer_arg(1));
+    //netdev = @cast(skb,"sk_buff")->dev;
+    //printf("__netif_receive_skb:\n%s\n", @cast(skb,"sk_buff")$$);
+    //printf("netif_receive_skb:\n%s\n%s\n", @cast(skb,"sk_buff")$$,@cast(netdev,"net_device")$$);
+	printf("%s",print_skbuff_header(skb,"mac"));
+}
+
+probe kernel.function("ip_rcv") {
+    skb = read_sk_buff(pointer_arg(1));
+    //netdev = @cast(skb,"sk_buff")->dev;
+    //printf("ip_rcv:\n%s\n", @cast(skb,"sk_buff")$$);
+    //printf("ip_rcv:\n%s\n%s\n", @cast(skb,"sk_buff")$$,@cast(netdev,"net_device")$$);
+	printf("%s",print_skbuff_header(skb,"ip "));
+}
+probe kernel.function("tcp_rcv_established") {
+    skb = read_sk_buff(pointer_arg(2));
+    //netdev = @cast(skb,"sk_buff")->dev;
+    //printf("tcp_rcv_established:\n%s\n", @cast(skb,"sk_buff")$$);
+    //printf("tcp_rcv_established:\n%s\n%s\n", @cast(skb,"sk_buff")$$,@cast(netdev,"net_device")$$);
+	printf("%s",print_skbuff_header(skb,"tcp"));
+	//printf("%s\n",print_skb_port(skb));
+}
+
+
+probe kernel.function("ip_defrag") {
+	skb = read_sk_buff(pointer_arg(1));
+	printf("%s",print_skbuff_header(skb,"ip_defrag"));
+}
+
+function get_list_from_napi:long(ns:long)%{
+	struct napi_struct *ns = (struct napi_struct *)STAP_ARG_ns;
+	STAP_RETVALUE = (long)(ns->gro_list);
+%}
+probe kernel.function("dev_gro_receive") {	
+	//printf("%s",print_skbuff_merge(get_list_from_napi(pointer_arg(1)),pointer_arg(2),"gro_list"));		
+	printf("%s",print_skbuff_merge(pointer_arg(3),pointer_arg(2),"dev_list"));		
+}
+probe kernel.function("inet_gro_receive") {	
+	printf("%s",print_skbuff_merge(pointer_arg(1),pointer_arg(2),"inet_gro"));	
+}
+probe kernel.function("tcp_gro_receive") {
+	//skb = read_sk_buff(pointer_arg(2));
+	printf("%s",print_skbuff_merge(pointer_arg(1),pointer_arg(2),"tcp_gro"));		
+	//printf("%s",print_skbuff_header(skb,"tcp_gro"));
+}
+probe kernel.function("skb_gro_receive") {
+	printf("%s",print_skbuff_merge(pointer_arg(1),pointer_arg(2),"skb_gro"));		
+}
+
+function timestamp_check:long(skb:long)%{
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;
+	//net_timestamp_check(netdev_tstamp_prequeue,skb);
+	if( !(skb->tstamp.tv64)){
+		__net_timestamp(skb);
+	}
+%}
+probe kernel.function("napi_gro_receive") {	
+	timestamp_check(pointer_arg(2));	
+}
