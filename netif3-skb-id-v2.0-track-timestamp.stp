@@ -1,0 +1,88 @@
+#!/usr/bin/stap -g
+
+%{
+	#include <linux/in.h>
+    #include <linux/ip.h>
+	#include <linux/skbuff.h>
+	#include <linux/netdevice.h>
+	#include <linux/tcp.h>
+	
+	#include <linux/ktime.h>
+	#include <linux/hrtimer.h>
+	
+#include <linux/kernel.h>
+#include <linux/kmemcheck.h>
+#include <linux/compiler.h>
+#include <linux/time.h>
+#include <linux/bug.h>
+#include <linux/cache.h>
+
+#include <linux/atomic.h>
+#include <asm/types.h>
+#include <linux/spinlock.h>
+#include <linux/net.h>
+#include <linux/textsearch.h>
+#include <net/checksum.h>
+#include <linux/rcupdate.h>
+#include <linux/dmaengine.h>
+#include <linux/hrtimer.h>
+#include <linux/dma-mapping.h>
+#include <linux/netdev_features.h>
+#include <net/flow_keys.h>
+
+%} /* <-- top level */
+
+probe begin {
+    printf("SystemTap start!\n");
+}
+
+
+/*
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached").function("try_read_network@/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached.c")
+{
+	$c->skb_id_flag=1;
+}
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached").function("try_read_command@/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached.c")
+{
+	$c->skb_id_flag=1;
+}
+*/
+
+/*
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached").function("conn_new@/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached.c").return
+{
+	$return->skb_id_flag=1;
+}
+*/
+
+/*
+function get_tstamp:string() %{
+	ktime_t tstamp;
+	tstamp = ktime_get_real();
+	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%lld",tstamp.tv64);
+%}
+*/
+
+function print_skbuff_tstamp:string(skb:long,func_name:string) %{	
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;		
+	struct tcphdr *th = tcp_hdr(skb);
+	char *func_name =(char *)STAP_ARG_func_name;
+	
+	ktime_t tstamp = ktime_get_real();
+
+	if(th->dest == 52011 && th->syn!=1 && th->fin!=1){
+		snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%s    %lld    %lld\n",func_name,skb->tstamp.tv64,tstamp.tv64);	
+	}
+%}
+
+probe kernel.function("__netif_receive_skb") {
+	printf("%s",print_skbuff_tstamp(pointer_arg(1),"netif_receive_skb"));
+}
+
+probe kernel.function("ip_rcv") {
+	printf("%s",print_skbuff_tstamp(pointer_arg(1),"ip_rcv"));
+}
+probe kernel.function("tcp_rcv_established") {
+	printf("%s",print_skbuff_tstamp(pointer_arg(2),"tcp_rcv_established"));
+}
+

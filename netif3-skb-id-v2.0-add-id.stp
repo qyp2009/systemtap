@@ -1,0 +1,139 @@
+#!/usr/bin/stap -g
+
+%{
+	#include <linux/in.h>
+    #include <linux/ip.h>
+	#include <linux/skbuff.h>
+	#include <linux/netdevice.h>
+	#include <linux/tcp.h>
+	
+	#include <linux/ktime.h>
+	#include <linux/hrtimer.h>
+	
+#include <linux/kernel.h>
+#include <linux/kmemcheck.h>
+#include <linux/compiler.h>
+#include <linux/time.h>
+#include <linux/bug.h>
+#include <linux/cache.h>
+
+#include <linux/atomic.h>
+#include <asm/types.h>
+#include <linux/spinlock.h>
+#include <linux/net.h>
+#include <linux/textsearch.h>
+#include <net/checksum.h>
+#include <linux/rcupdate.h>
+#include <linux/dmaengine.h>
+#include <linux/hrtimer.h>
+#include <linux/dma-mapping.h>
+#include <linux/netdev_features.h>
+#include <net/flow_keys.h>
+
+%} /* <-- top level */
+
+probe begin {
+    printf("SystemTap start!\n");
+}
+
+function add_skb_id_to_iovec:string(skb:long, offset:long, to:long, len:long) %{
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;
+	struct tcphdr *th = tcp_hdr(skb);
+	struct iovec *toiovec = (struct iovec *)STAP_ARG_to;
+	int offset = STAP_ARG_offset,len = STAP_ARG_len, n, err;
+	char skb_id[36];
+	//int start1 = skb_headlen(skb);//skb->len - skb->data_len
+	//int copy1 = start1 - offset;
+	//int start2 = skb_pagelen(skb);//linear_len + nr_frags_len(without frag_list_len)
+	int start2 = skb->len;//linear_len + nr_frags_len(without frag_list_len)
+	int copy2 = start2 - offset;
+
+	//if(copy1 > len) copy1 = len;
+	if(copy2 > len) copy2 = len;
+	//snprintf(skb_id,100,"{sport:%d,dport:%d,cooper,%lld",th->source,th->dest,skb->tstamp.tv64);
+	//strlcpy(STAP_RETVALUE,skb_id,99);
+	//strncat(skb_id,skb->data+offset,copy1);
+	
+	//if(th->dest == 52011 && th->syn!=1 && th->fin!=1){
+	if(th->dest == 52011){
+		//snprintf(skb_id,MAXSTRINGLEN,"{size:%d,len:%d,data_len:%d,offset:%d,skb->timestap:%lld}",copy1,skb->len,skb->data_len,offset,skb->tstamp.tv64);
+		n = snprintf(skb_id,MAXSTRINGLEN,"{xxxx%lld:%05d}",skb->tstamp.tv64,copy2);
+		*(unsigned int *)(skb_id+1)		=  0x81828384;
+		//*(unsigned int *)(skb_id+n-5)	=  copy2;
+		n=strlen(skb_id);
+		toiovec->iov_len += n;
+		err = memcpy_toiovec(toiovec, skb_id, n);
+		/*strlcpy(STAP_RETVALUE,skb_id,n+1);
+		if(err == -EFAULT){	
+			strcat(STAP_RETVALUE,"add id error ");
+			n = snprintf(skb_id,MAXSTRINGLEN,"0x%p %lu ",toiovec, (unsigned long)(toiovec->iov_len));
+			strcat(STAP_RETVALUE,skb_id);
+			toiovec = (struct iovec *)STAP_ARG_to;
+			n = snprintf(skb_id,MAXSTRINGLEN,"0x%p",toiovec);
+			strcat(STAP_RETVALUE,skb_id);
+		}
+		strcat(STAP_RETVALUE,"\n");*/
+	}
+%}
+
+probe kernel.function("skb_copy_datagram_iovec") {
+	/*skb = pointer_arg(1);
+	offset = int_arg(2);
+	toiovec = pointer_arg(3);
+	len = int_arg(4);*/
+	//add_skb_id_to_iovec(skb,offset,toiovec,len);
+	add_skb_id_to_iovec($skb,$offset,$to,$len);
+	//printf("%s",add_skb_id_to_iovec(skb,offset,toiovec,len));
+	//printf("%s",add_skb_id_to_iovec($skb,$offset,$to,$len));
+	//printf("%s",add_skb_id_to_iovec(pointer_arg(1),int_arg(2),pointer_arg(3),int_arg(4)));
+}
+
+/*
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached").function("try_read_network@/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached.c")
+{
+	$c->skb_id_flag=1;
+}
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached").function("try_read_command@/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached.c")
+{
+	$c->skb_id_flag=1;
+}
+*/
+
+/*
+probe process("/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached").function("conn_new@/home/quyupeng/benchmark/memcached/memcached-1.4.17-cooper/memcached.c").return
+{
+	$return->skb_id_flag=1;
+}
+*/
+
+/*
+function get_tstamp:string() %{
+	ktime_t tstamp;
+	tstamp = ktime_get_real();
+	snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%lld",tstamp.tv64);
+%}
+*/
+/*
+function print_skbuff_tstamp:string(skb:long,func_name:string) %{	
+	struct sk_buff *skb = (struct sk_buff *)STAP_ARG_skb;		
+	struct tcphdr *th = tcp_hdr(skb);
+	char *func_name =(char *)STAP_ARG_func_name;
+	
+	ktime_t tstamp = ktime_get_real();
+
+	if(th->dest == 52011 && th->syn!=1 && th->fin!=1){
+		snprintf(STAP_RETVALUE,MAXSTRINGLEN,"%s    %lld    %lld\n",func_name,skb->tstamp.tv64,tstamp.tv64);	
+	}
+%}
+
+probe kernel.function("__netif_receive_skb") {
+	printf("%s",print_skbuff_tstamp(pointer_arg(1),"netif_receive_skb"));
+}
+
+probe kernel.function("ip_rcv") {
+	printf("%s",print_skbuff_tstamp(pointer_arg(1),"ip_rcv"));
+}
+probe kernel.function("tcp_rcv_established") {
+	printf("%s",print_skbuff_tstamp(pointer_arg(2),"tcp_rcv_established"));
+}
+*/
