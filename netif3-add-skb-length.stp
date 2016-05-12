@@ -92,7 +92,7 @@ function print_copyto_iovec:string(skb:long, offset:long, toiovec:long, len:long
 	if(th->dest == 2586 && th->syn!=1 && th->fin!=1){
 		snprintf(skb_id,MAXSTRINGLEN,
 				"{copyto_offset:%d,copyto_len:%d,len_linear:%d:%d,len_page:%d:%d,len:%d,data_len:%d,ip_frag:%d,skb->timestap:%lld}\n",
-				offset, len, copy1, copy11, copy2, copy22, skb->len,skb->data_len,ip_frag, skb->tstamp.tv64);
+				offset, len, copy11, copy1, copy22, copy2, skb->len,skb->data_len,ip_frag, skb->tstamp.tv64);
 		strlcpy(STAP_RETVALUE,skb_id,188);
 		//toiovec->iov_len += strlen(skb_id);
 		//memcpy_toiovec(toiovec,skb_id,strlen(skb_id));
